@@ -43,8 +43,17 @@ Instrument your model (your searchable fields do not have to be stored, they can
 
     class MyStuff < ActiveRecord::Base
       # assuming my_stuffs has a 'name' attribute
-      fuzzily_searchable :name
+      fuzzily_searchable :name, {:scope_field => field_name, :scope_negate => [true/false], :scope_list => []}
     end
+
+For example:
+
+    fuzzily_searchable :name_en, {:scope_field => 'feature_code', :scope_negate => true, :scope_list => ['ADM1', 'ADM2', 'ADM3', 'ADM4', 'ADMD', 'ISL', 'PPLX']}
+
+Will produce:
+
+    { :conditions => ["#{options[:scope_field]} #{(options.has_key?(:scope_negate) && options[:scope_negate]) ? 'NOT' : ''} IN (?)",options[:scope_list]] }
+    => WHERE `feature_code` NOT IN ('ADM1', 'ADM2', 'ADM3', 'ADM4', 'ADMD', 'ISL', 'PPLX')
 
 Index your model (will happen automatically for new/updated records):
 
