@@ -27,6 +27,16 @@ module Fuzzily
         :dependent => :destroy,
         :autosave => true
 
+      singleton_class.send(:define_method, :const_conditions) do 
+        if options.has_key?(:scope_field)
+          puts "with conditions"
+          { :conditions => ["#{options[:scope_field]} #{(options.has_key?(:scope_negate) && options[:scope_negate]) ? 'NOT' : ''} IN (?)",options[:scope_list]] }
+        else
+          puts "all"
+          { :conditions => {} }
+        end
+      end
+
       singleton_class.send(:define_method,"find_by_fuzzy_#{field}".to_sym) do |*args|
         case args.size
           when 1 then pattern = args.first ; options = {}
@@ -44,11 +54,11 @@ module Fuzzily
       singleton_class.send(:define_method,"bulk_update_fuzzy_#{field}".to_sym) do
         trigram_class = trigram_class_name.constantize
 
-        self.scoped(:include => trigram_association).find_in_batches(:batch_size => 100) do |batch|
+        self.scoped(:include => trigram_association).find_in_batches(self.const_conditions_from) do |batch|
           inserts = []
           batch.each do |record|
             record.send(field).extend(String).trigrams.each do |trigram|
-              inserts << sanitize_sql_array(['(?,?,?,?,?)', self.name, record.id, field.to_s, 1, trigram])
+              inserts << sanitize_sql_array(['(?,?,?,?,?)', self.name, record.id, field.to_s, record.population, trigram])
             end
           end
 
@@ -67,7 +77,7 @@ module Fuzzily
       define_method update_trigrams_method do
         self.send(trigram_association).delete_all
         self.send(field).extend(String).trigrams.each do |trigram|
-          self.send(trigram_association).create!(:score => 1, :trigram => trigram, :owner_type => self.class.name)
+          self.send(trigram_association).create!(:score => self.population, :trigram => trigram, :owner_type => self.class.name)
         end
       end
 
