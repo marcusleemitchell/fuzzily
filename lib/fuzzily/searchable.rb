@@ -36,7 +36,6 @@ module Fuzzily
 
         trigram_class_name.constantize.
           scoped(options).
-          fuzzily_scope.
           for_model(self.name).
           for_field(field.to_s).
           matches_for(pattern)
