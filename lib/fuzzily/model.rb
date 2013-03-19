@@ -43,12 +43,19 @@ module Fuzzily
         options[:limit] ||= 10
         self.
           scoped(:select => 'owner_id, owner_type, SUM(score) AS total_score').
+          scoped(:from => 'trigrams FORCE INDEX(index_for_match)').
           scoped(:group => :owner_id).
           scoped(:order => 'total_score DESC').
           scoped(:limit => options[:limit]).
           with_trigram(text.extend(String).trigrams).
           map(&:owner)
       end
+
+      # override this if you want to specialize the default scope on your trigrams store
+      def fuzzily_scope
+        self
+      end
+
     end
   end
 end
